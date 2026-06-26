@@ -111,16 +111,21 @@ model Language {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(USER)
-  cityId        String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  name                String?
+  email               String    @unique
+  emailVerified       DateTime?
+  image               String?
+  password            String?
+  role                Role      @default(USER)
+  cityId              String?
+  failedLoginAttempts Int       @default(0)
+  lockoutUntil        DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?
+  twoFactorBackupCodes String?  @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   city          City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
   accounts      Account[]
@@ -134,6 +139,7 @@ model User {
   memberships   Membership[]
   auditLogs     AuditLog[]
   couponUsages  CouponUsage[]
+  sessions      UserSession[]
 
   referralsGiven    Referral[] @relation("Referrer")
   referralsReceived Referral[] @relation("Referred")
@@ -570,4 +576,38 @@ model Membership {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  jti       String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
 }

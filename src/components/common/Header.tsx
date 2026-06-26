@@ -135,6 +135,15 @@ export function Header() {
                     <span>My Bookings</span>
                   </Link>
 
+                  <Link
+                    href="/settings"
+                    onClick={() => setShowProfileDropdown(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-emerald-400" />
+                    <span>Account Settings</span>
+                  </Link>
+
                   {session.user.role === Role.ADMIN && (
                     <Link
                       href="/admin"

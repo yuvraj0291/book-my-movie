@@ -5,17 +5,20 @@ import { useRouter } from "next/navigation";
 import { loginAction, signUpAction } from "@/app/actions/authActions";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, UserPlus, LogIn, Mail, Lock, User } from "lucide-react";
+import Link from "next/link";
 
 export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "register" }) {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     const formData = new FormData(e.currentTarget);
     
@@ -24,6 +27,8 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
         const res = await loginAction(formData);
         if (res?.error) {
           setError(res.error);
+        } else if (res?.twoFactorRequired) {
+          router.push("/login/2fa");
         } else if (res?.success) {
           router.push("/");
           router.refresh();
@@ -33,17 +38,9 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
         if (res?.error) {
           setError(res.error);
         } else if (res?.success) {
-          const loginData = new FormData();
-          loginData.append("email", formData.get("email") as string);
-          loginData.append("password", formData.get("password") as string);
-          const loginRes = await loginAction(loginData);
-          if (loginRes?.error) {
-            setError("Account created, but sign-in failed. Please sign in manually.");
-            setMode("login");
-          } else {
-            router.push("/");
-            router.refresh();
-          }
+          setSuccessMessage(res.message || "Registration successful! Please check your email to verify your account.");
+          setMode("login");
+          e.currentTarget.reset();
         }
       }
     } catch (err: any) {
@@ -61,8 +58,8 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
 
       <div className="flex border-b border-white/5 mb-8">
         <button
-          onClick={() => { setMode("login"); setError(null); }}
-          className={`flex-1 pb-3 text-center text-sm font-semibold border-b-2 transition-all ${
+          onClick={() => { setMode("login"); setError(null); setSuccessMessage(null); }}
+          className={`flex-1 pb-3 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
             mode === "login"
               ? "border-primary text-white font-bold"
               : "border-transparent text-zinc-400 hover:text-zinc-200"
@@ -71,8 +68,8 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
           Sign In
         </button>
         <button
-          onClick={() => { setMode("register"); setError(null); }}
-          className={`flex-1 pb-3 text-center text-sm font-semibold border-b-2 transition-all ${
+          onClick={() => { setMode("register"); setError(null); setSuccessMessage(null); }}
+          className={`flex-1 pb-3 text-center text-sm font-semibold border-b-2 transition-all cursor-pointer ${
             mode === "register"
               ? "border-primary text-white font-bold"
               : "border-transparent text-zinc-400 hover:text-zinc-200"
@@ -90,7 +87,7 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.15 }}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-2 font-sans">
             {mode === "login" ? "Welcome back" : "Get started"}
           </h2>
           <p className="text-sm text-zinc-400 mb-6 font-light">
@@ -106,6 +103,12 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
               </div>
             )}
 
+            {successMessage && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-400 font-medium leading-relaxed">
+                {successMessage}
+              </div>
+            )}
+
             {mode === "register" && (
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-400">Name</label>
@@ -115,7 +118,7 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
                     type="text"
                     required
                     placeholder="John Doe"
-                    className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-500"
+                    className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-550"
                   />
                   <User className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
                 </div>
@@ -130,7 +133,7 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
                   type="email"
                   required
                   placeholder="john@example.com"
-                  className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-500"
+                  className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-550"
                 />
                 <Mail className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
               </div>
@@ -144,16 +147,27 @@ export function AuthForm({ mode: initialMode = "login" }: { mode?: "login" | "re
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-500"
+                  className="w-full bg-white/5 text-sm px-4 py-2.5 pl-10 rounded-lg border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder-zinc-550"
                 />
                 <Lock className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
               </div>
             </div>
 
+            {mode === "login" && (
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-zinc-500 hover:text-white transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 mt-6 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white font-semibold text-sm rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all disabled:opacity-50 disabled:pointer-events-none hover:-translate-y-0.5 active:translate-y-0"
+              className="w-full flex items-center justify-center gap-2 mt-6 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white font-semibold text-sm rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all disabled:opacity-50 disabled:pointer-events-none hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
