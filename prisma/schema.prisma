@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SeatType {
+  NORMAL
+  PREMIUM
+  VIP
+}
+
+enum ShowSeatStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  bookings      Booking[]
+  accounts      Account[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Movie {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @db.Text
+  posterUrl    String
+  bannerUrl    String
+  durationMins Int
+  language     String
+  genre        String
+  releaseDate  DateTime
+  rating       Float    @default(0.0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shows        Show[]
+}
+
+model Theatre {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  screens   Screen[]
+
+  @@index([city])
+}
+
+model Screen {
+  id        String   @id @default(cuid())
+  name      String
+  theatreId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  theatre   Theatre  @relation(fields: [theatreId], references: [id], onDelete: Cascade)
+  seats     Seat[]
+  shows     Show[]
+
+  @@index([theatreId])
+}
+
+model Seat {
+  id        String   @id @default(cuid())
+  screenId  String
+  row       String
+  number    Int
+  type      SeatType @default(NORMAL)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  screen    Screen     @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  showSeats ShowSeat[]
+
+  @@unique([screenId, row, number])
+  @@index([screenId])
+}
+
+model Show {
+  id         String   @id @default(cuid())
+  movieId    String
+  screenId   String
+  startTime  DateTime
+  endTime    DateTime
+  basePrice  Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  movie      Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  screen     Screen     @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  showSeats  ShowSeat[]
+  bookings   Booking[]
+
+  @@index([movieId])
+  @@index([screenId])
+  @@index([startTime])
+}
+
+model ShowSeat {
+  id             String         @id @default(cuid())
+  showId         String
+  seatId         String
+  bookingId      String?
+  status         ShowSeatStatus @default(AVAILABLE)
+  lockedAt       DateTime?
+  lockedByUserId String?
+  price          Decimal        @db.Decimal(10, 2)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  show           Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  seat           Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  booking        Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([showId, seatId])
+  @@index([showId])
+  @@index([seatId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([lockedByUserId, lockedAt])
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  userId     String
+  showId     String
+  totalPrice Decimal       @db.Decimal(10, 2)
+  status     BookingStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show       Show       @relation(fields: [showId], references: [id], onDelete: Cascade)
+  showSeats  ShowSeat[]
+  payment    Payment?
+
+  @@index([userId])
+  @@index([showId])
+  @@index([status])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  transactionId String        @unique
+  gateway       String
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking       Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
