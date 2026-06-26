@@ -6,6 +6,8 @@ import { PrismaBookingRepository } from "@/infrastructure/db/PrismaBookingReposi
 import { RedisCacheService } from "@/infrastructure/services/RedisCacheService";
 import { StripeRazorpayPaymentService } from "@/infrastructure/services/StripeRazorpayPaymentService";
 import { ResendEmailService } from "@/infrastructure/services/ResendEmailService";
+import { PrismaAuditLogRepository } from "@/infrastructure/db/PrismaAuditLogRepository";
+import { RedisRateLimiter } from "@/infrastructure/services/RateLimiter";
 import { HoldSeatsUseCase } from "@/core/use-cases/booking/HoldSeatsUseCase";
 import { ConfirmBookingUseCase } from "@/core/use-cases/booking/ConfirmBookingUseCase";
 
@@ -14,13 +16,16 @@ const bookingRepository = new PrismaBookingRepository();
 const cacheService = new RedisCacheService();
 const paymentService = new StripeRazorpayPaymentService();
 const emailService = new ResendEmailService();
+const auditLogRepository = new PrismaAuditLogRepository();
+const rateLimiter = new RedisRateLimiter();
 
-const holdSeatsUseCase = new HoldSeatsUseCase(showRepository, cacheService);
+const holdSeatsUseCase = new HoldSeatsUseCase(showRepository, cacheService, auditLogRepository);
 const confirmBookingUseCase = new ConfirmBookingUseCase(
   bookingRepository,
   paymentService,
   emailService,
-  cacheService
+  cacheService,
+  auditLogRepository
 );
 
 export async function holdSeatsAndCreateBookingAction(
@@ -33,6 +38,12 @@ export async function holdSeatsAndCreateBookingAction(
     return { error: "Authentication required" };
   }
   const userId = session.user.id;
+
+  const limitKey = `rate_limit:hold_seats:${userId}`;
+  const isLimited = await rateLimiter.isRateLimited(limitKey, 5, 60); // 5 hold attempts per minute
+  if (isLimited) {
+    return { error: "Too many seat hold attempts. Please wait a minute and try again." };
+  }
 
   try {
     const holdSuccess = await holdSeatsUseCase.execute(showId, seatIds, userId);

@@ -1,17 +1,18 @@
 import { IShowRepository } from "@/core/repositories/IShowRepository";
 import { ICacheService } from "@/core/services/ICacheService";
+import { IAuditLogRepository } from "@/core/repositories/IAuditLogRepository";
 import { ShowSeatStatus } from "@prisma/client";
 
 export class HoldSeatsUseCase {
   constructor(
     private showRepository: IShowRepository,
-    private cacheService: ICacheService
+    private cacheService: ICacheService,
+    private auditLogRepository: IAuditLogRepository
   ) {}
 
   async execute(showId: string, seatIds: string[], userId: string): Promise<boolean> {
     const lockTtlSeconds = 480; // 8 minutes seat hold
     const lockValue = userId;
-    const acquiredLocks: string[] = [];
 
     try {
       const showSeats = await this.showRepository.findSeatsByShowId(showId);
@@ -27,25 +28,20 @@ export class HoldSeatsUseCase {
         }
       }
 
-      for (const seatId of seatIds) {
-        const lockKey = `lock:show:${showId}:seat:${seatId}`;
-        const acquired = await this.cacheService.acquireLock(lockKey, lockValue, lockTtlSeconds);
-        
-        if (!acquired) {
-          for (const key of acquiredLocks) {
-            await this.cacheService.releaseLock(key, lockValue);
-          }
-          return false;
-        }
-        acquiredLocks.push(lockKey);
+      const lockKeys = seatIds.map(seatId => `lock:show:${showId}:seat:${seatId}`);
+      const acquired = await this.cacheService.acquireMultipleLocks(lockKeys, lockValue, lockTtlSeconds);
+
+      if (acquired) {
+        await this.auditLogRepository.create(
+          userId,
+          "SEAT_HOLD",
+          `Held seats ${seatIds.join(", ")} for show ${showId}`
+        );
       }
 
-      return true;
+      return acquired;
     } catch (e) {
       console.error("HoldSeatsUseCase error:", e);
-      for (const key of acquiredLocks) {
-        await this.cacheService.releaseLock(key, lockValue);
-      }
       return false;
     }
   }

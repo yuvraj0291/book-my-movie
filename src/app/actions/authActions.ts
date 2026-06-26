@@ -4,6 +4,10 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { signIn } from "@/auth";
+import { RedisRateLimiter } from "@/infrastructure/services/RateLimiter";
+import { headers } from "next/headers";
+
+const rateLimiter = new RedisRateLimiter();
 
 const signUpSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -12,6 +16,13 @@ const signUpSchema = z.object({
 });
 
 export async function signUpAction(formData: FormData) {
+  const clientIp = (await headers()).get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitKey = `rate_limit:signup:${clientIp}`;
+  const isLimited = await rateLimiter.isRateLimited(rateLimitKey, 5, 600); // 5 signups per 10 mins
+  if (isLimited) {
+    return { error: "Too many sign up attempts. Please try again later." };
+  }
+
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -44,6 +55,13 @@ export async function signUpAction(formData: FormData) {
 }
 
 export async function loginAction(formData: FormData) {
+  const clientIp = (await headers()).get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitKey = `rate_limit:login:${clientIp}`;
+  const isLimited = await rateLimiter.isRateLimited(rateLimitKey, 10, 300); // 10 logins per 5 mins
+  if (isLimited) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 

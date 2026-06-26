@@ -2,13 +2,15 @@ import { IBookingRepository } from "@/core/repositories/IBookingRepository";
 import { IPaymentService } from "@/core/services/IPaymentService";
 import { IEmailService } from "@/core/services/IEmailService";
 import { ICacheService } from "@/core/services/ICacheService";
+import { IAuditLogRepository } from "@/core/repositories/IAuditLogRepository";
 
 export class ConfirmBookingUseCase {
   constructor(
     private bookingRepository: IBookingRepository,
     private paymentService: IPaymentService,
     private emailService: IEmailService,
-    private cacheService: ICacheService
+    private cacheService: ICacheService,
+    private auditLogRepository: IAuditLogRepository
   ) {}
 
   async execute(
@@ -49,6 +51,12 @@ export class ConfirmBookingUseCase {
         console.error(`Failed to confirm booking ${bookingId} in database`);
         return false;
       }
+
+      await this.auditLogRepository.create(
+        booking.userId,
+        "BOOKING_CONFIRM",
+        `Confirmed booking ${bookingId} via ${gateway} with transaction ${transactionId}`
+      );
 
       const seatIds = booking.showSeats.map(s => s.seatId);
       for (const seatId of seatIds) {

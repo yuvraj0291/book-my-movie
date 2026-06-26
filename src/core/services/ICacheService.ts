@@ -4,4 +4,5 @@ export interface ICacheService {
   del(key: string): Promise<void>;
   acquireLock(key: string, value: string, ttlSeconds: number): Promise<boolean>;
   releaseLock(key: string, value: string): Promise<boolean>;
+  acquireMultipleLocks(keys: string[], value: string, ttlSeconds: number): Promise<boolean>;
 }

@@ -99,11 +99,24 @@ export class StripeRazorpayPaymentService implements IPaymentService {
       const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = payload;
       if (!razorpayOrderId || !razorpayPaymentId) return false;
 
-      if (!this.razorpay && process.env.NODE_ENV !== "production") {
-        return razorpayOrderId.startsWith("order_mock_");
+      if (!this.razorpay) {
+        if (process.env.NODE_ENV !== "production") {
+          return razorpayOrderId.startsWith("order_mock_") || razorpayPaymentId.startsWith("pay_mock_");
+        }
+        return false;
       }
 
-      if (!razorpaySignature || !process.env.RAZORPAY_KEY_SECRET) return false;
+      if (!razorpaySignature) {
+        try {
+          const payment: any = await this.razorpay.payments.fetch(razorpayPaymentId);
+          return payment.status === "captured";
+        } catch (e) {
+          console.error("Razorpay API status check failed:", e);
+          return false;
+        }
+      }
+
+      if (!process.env.RAZORPAY_KEY_SECRET) return false;
 
       try {
         const generatedSignature = crypto

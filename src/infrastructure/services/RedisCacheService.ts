@@ -60,4 +60,35 @@ export class RedisCacheService implements ICacheService {
       return false;
     }
   }
+
+  async acquireMultipleLocks(keys: string[], value: string, ttlSeconds: number): Promise<boolean> {
+    if (keys.length === 0) return true;
+    try {
+      const luaScript = `
+        local expired_or_free = true
+        for i=1, #KEYS do
+          local key = KEYS[i]
+          if redis.call("EXISTS", key) == 1 then
+            expired_or_free = false
+            break
+          end
+        end
+
+        if expired_or_free then
+          for i=1, #KEYS do
+            local key = KEYS[i]
+            redis.call("SET", key, ARGV[1], "EX", tonumber(ARGV[2]))
+          end
+          return 1
+        else
+          return 0
+        end
+      `;
+      const result = await redis.eval(luaScript, keys, [value, ttlSeconds]);
+      return result === 1;
+    } catch (e) {
+      console.error("RedisCacheService.acquireMultipleLocks error:", e);
+      return false;
+    }
+  }
 }
