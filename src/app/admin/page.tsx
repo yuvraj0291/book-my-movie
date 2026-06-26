@@ -21,7 +21,7 @@ export default async function AdminPage() {
   const formattedTheatres = theatres.map(t => ({
     id: t.id,
     name: t.name,
-    city: t.city,
+    city: t.city.name,
     screens: t.screens.map(s => ({
       id: s.id,
       name: s.name,

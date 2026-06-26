@@ -12,7 +12,11 @@ export class PrismaBookingRepository implements IBookingRepository {
             movie: true,
             screen: {
               include: {
-                theatre: true,
+                theatre: {
+                  include: {
+                    city: true,
+                  },
+                },
               },
             },
           },
@@ -39,6 +43,8 @@ export class PrismaBookingRepository implements IBookingRepository {
           userId,
           showId,
           totalPrice,
+          discountAmount: 0.00,
+          finalAmount: totalPrice,
           status: BookingStatus.PENDING,
         },
       });
@@ -47,7 +53,6 @@ export class PrismaBookingRepository implements IBookingRepository {
         where: {
           showId,
           seatId: { in: seatIds },
-          lockedByUserId: userId,
         },
         data: {
           bookingId: booking.id,
@@ -93,8 +98,6 @@ export class PrismaBookingRepository implements IBookingRepository {
           where: { bookingId },
           data: {
             status: ShowSeatStatus.BOOKED,
-            lockedAt: null,
-            lockedByUserId: null,
           },
         });
 
@@ -127,8 +130,6 @@ export class PrismaBookingRepository implements IBookingRepository {
           data: {
             status: ShowSeatStatus.AVAILABLE,
             bookingId: null,
-            lockedAt: null,
-            lockedByUserId: null,
           },
         });
 
@@ -154,7 +155,11 @@ export class PrismaBookingRepository implements IBookingRepository {
             movie: true,
             screen: {
               include: {
-                theatre: true,
+                theatre: {
+                  include: {
+                    city: true,
+                  },
+                },
               },
             },
           },

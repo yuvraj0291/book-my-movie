@@ -1,5 +1,6 @@
 import { IShowRepository } from "@/core/repositories/IShowRepository";
 import { ICacheService } from "@/core/services/ICacheService";
+import { ShowSeatStatus } from "@prisma/client";
 
 export class HoldSeatsUseCase {
   constructor(
@@ -8,35 +9,35 @@ export class HoldSeatsUseCase {
   ) {}
 
   async execute(showId: string, seatIds: string[], userId: string): Promise<boolean> {
-    const lockTtlSeconds = 300; // 5 minutes seat hold
-    const lockValue = `${userId}_${Date.now()}`;
+    const lockTtlSeconds = 480; // 8 minutes seat hold
+    const lockValue = userId;
     const acquiredLocks: string[] = [];
 
     try {
-      // 1. Acquire distributed locks in cache for each seat
+      const showSeats = await this.showRepository.findSeatsByShowId(showId);
+      const targetSeats = showSeats.filter(s => seatIds.includes(s.seatId));
+
+      if (targetSeats.length !== seatIds.length) {
+        return false;
+      }
+
+      for (const seat of targetSeats) {
+        if (seat.status === ShowSeatStatus.BOOKED) {
+          return false;
+        }
+      }
+
       for (const seatId of seatIds) {
         const lockKey = `lock:show:${showId}:seat:${seatId}`;
         const acquired = await this.cacheService.acquireLock(lockKey, lockValue, lockTtlSeconds);
         
         if (!acquired) {
-          // Release all previously acquired locks if this request failed to lock a seat
           for (const key of acquiredLocks) {
             await this.cacheService.releaseLock(key, lockValue);
           }
           return false;
         }
         acquiredLocks.push(lockKey);
-      }
-
-      // 2. Persist the lock in the Database
-      const dbLocked = await this.showRepository.lockSeats(showId, seatIds, userId, lockTtlSeconds);
-      
-      if (!dbLocked) {
-        // Release cache locks if DB write failed
-        for (const key of acquiredLocks) {
-          await this.cacheService.releaseLock(key, lockValue);
-        }
-        return false;
       }
 
       return true;

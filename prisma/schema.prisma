@@ -1,28 +1,28 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+datasource db {
+  provider = "postgresql"
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-}
-
 enum Role {
   USER
   ADMIN
+  THEATRE_OWNER
 }
 
 enum SeatType {
   NORMAL
   PREMIUM
   VIP
+  WHEELCHAIR
+  RECLINER
+  COUPLE
 }
 
 enum ShowSeatStatus {
   AVAILABLE
-  LOCKED
   BOOKED
 }
 
@@ -30,12 +30,84 @@ enum BookingStatus {
   PENDING
   CONFIRMED
   CANCELLED
+  EXPIRED
 }
 
 enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  REFUNDED
+  PARTIAL_REFUND
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ShowFormat {
+  TWO_D
+  THREE_D
+  IMAX
+  FOUR_DX
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+}
+
+enum PointsTxType {
+  EARNED
+  SPENT
+}
+
+enum FoodOrderStatus {
+  PREPARING
+  SERVED
+  CANCELLED
+}
+
+enum MembershipType {
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+model City {
+  id        String    @id @default(cuid())
+  name      String
+  state     String
+  country   String
+  
+  theatres  Theatre[]
+  users     User[]
+
+  @@unique([name, state, country])
+}
+
+model Genre {
+  id     String       @id @default(cuid())
+  name   String       @unique
+  movies MovieGenre[]
+}
+
+model Language {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  code           String          @unique
+  
+  movieLanguages MovieLanguage[]
+  movieSubtitles MovieSubtitle[]
+  shows          Show[]          @relation("ShowLanguage")
+  subtitleShows  Show[]          @relation("ShowSubtitle")
 }
 
 model User {
@@ -46,11 +118,27 @@ model User {
   image         String?
   password      String?
   role          Role      @default(USER)
+  cityId        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
-  bookings      Booking[]
+
+  city          City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
   accounts      Account[]
+  bookings      Booking[]
+  ownedTheatres Theatre[] @relation("OwnedTheatres")
+  
+  reviews       Review[]
+  favorites     Favorite[]
+  notifications Notification[]
+  loyaltyPoints LoyaltyPoints[]
+  memberships   Membership[]
+  auditLogs     AuditLog[]
+  couponUsages  CouponUsage[]
+
+  referralsGiven    Referral[] @relation("Referrer")
+  referralsReceived Referral[] @relation("Referred")
+
+  @@index([cityId])
 }
 
 model Account {
@@ -80,41 +168,129 @@ model Movie {
   posterUrl    String
   bannerUrl    String
   durationMins Int
-  language     String
-  genre        String
   releaseDate  DateTime
   rating       Float    @default(0.0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  genres       MovieGenre[]
+  languages    MovieLanguage[]
+  subtitles    MovieSubtitle[]
+  actors       MovieActor[]
+  directors    MovieDirector[]
   shows        Show[]
+  favorites    Favorite[]
+  reviews      Review[]
+
+  @@index([title])
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+  @@index([genreId])
+}
+
+model MovieLanguage {
+  movieId    String
+  languageId String
+
+  movie    Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, languageId])
+  @@index([languageId])
+}
+
+model MovieSubtitle {
+  movieId    String
+  languageId String
+
+  movie    Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, languageId])
+  @@index([languageId])
+}
+
+model Actor {
+  id              String       @id @default(cuid())
+  name            String
+  biography       String?      @db.Text
+  profileImageUrl String?
+  
+  movies          MovieActor[]
+}
+
+model Director {
+  id              String          @id @default(cuid())
+  name            String
+  biography       String?         @db.Text
+  profileImageUrl String?
+  
+  movies          MovieDirector[]
+}
+
+model MovieActor {
+  movieId       String
+  actorId       String
+  characterName String
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, actorId])
+  @@index([actorId])
+}
+
+model MovieDirector {
+  movieId    String
+  directorId String
+
+  movie    Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  director Director @relation(fields: [directorId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, directorId])
+  @@index([directorId])
 }
 
 model Theatre {
   id        String   @id @default(cuid())
   name      String
-  city      String
+  cityId    String
   address   String
   latitude  Float?
   longitude Float?
+  ownerId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  screens   Screen[]
+  city    City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  owner   User     @relation("OwnedTheatres", fields: [ownerId], references: [id], onDelete: Restrict)
+  screens Screen[]
 
-  @@index([city])
+  @@index([cityId])
+  @@index([ownerId])
 }
 
 model Screen {
-  id        String   @id @default(cuid())
-  name      String
-  theatreId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  theatreId  String
+  rowsCount  Int
+  colsCount  Int
+  seatLayout Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  theatre   Theatre  @relation(fields: [theatreId], references: [id], onDelete: Cascade)
-  seats     Seat[]
-  shows     Show[]
+  theatre Theatre @relation(fields: [theatreId], references: [id], onDelete: Cascade)
+  seats   Seat[]
+  shows   Show[]
 
   @@index([theatreId])
 }
@@ -124,6 +300,7 @@ model Seat {
   screenId  String
   row       String
   number    Int
+  label     String
   type      SeatType @default(NORMAL)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -136,65 +313,77 @@ model Seat {
 }
 
 model Show {
-  id         String   @id @default(cuid())
-  movieId    String
-  screenId   String
-  startTime  DateTime
-  endTime    DateTime
-  basePrice  Decimal  @db.Decimal(10, 2)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                 String     @id @default(cuid())
+  movieId            String
+  screenId           String
+  startTime          DateTime
+  endTime            DateTime
+  format             ShowFormat @default(TWO_D)
+  languageId         String
+  subtitleLanguageId String?
+  basePrice          Decimal    @db.Decimal(10, 2)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
-  movie      Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  screen     Screen     @relation(fields: [screenId], references: [id], onDelete: Cascade)
-  showSeats  ShowSeat[]
-  bookings   Booking[]
+  movie            Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  screen           Screen     @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  language         Language   @relation("ShowLanguage", fields: [languageId], references: [id], onDelete: Restrict)
+  subtitleLanguage Language?  @relation("ShowSubtitle", fields: [subtitleLanguageId], references: [id], onDelete: SetNull)
+  showSeats        ShowSeat[]
+  bookings         Booking[]
 
   @@index([movieId])
   @@index([screenId])
+  @@index([languageId])
+  @@index([subtitleLanguageId])
   @@index([startTime])
 }
 
 model ShowSeat {
-  id             String         @id @default(cuid())
-  showId         String
-  seatId         String
-  bookingId      String?
-  status         ShowSeatStatus @default(AVAILABLE)
-  lockedAt       DateTime?
-  lockedByUserId String?
-  price          Decimal        @db.Decimal(10, 2)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id        String         @id @default(cuid())
+  showId    String
+  seatId    String
+  bookingId String?
+  status    ShowSeatStatus @default(AVAILABLE)
+  price     Decimal        @db.Decimal(10, 2)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
-  show           Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
-  seat           Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
-  booking        Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  seat    Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@unique([showId, seatId])
   @@index([showId])
   @@index([seatId])
   @@index([bookingId])
   @@index([status])
-  @@index([lockedByUserId, lockedAt])
 }
 
 model Booking {
-  id         String        @id @default(cuid())
-  userId     String
-  showId     String
-  totalPrice Decimal       @db.Decimal(10, 2)
-  status     BookingStatus @default(PENDING)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  userId         String
+  showId         String
+  couponId       String?
+  totalPrice     Decimal       @db.Decimal(10, 2)
+  discountAmount Decimal       @default(0.00) @db.Decimal(10, 2)
+  finalAmount    Decimal       @db.Decimal(10, 2)
+  status         BookingStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  show       Show       @relation(fields: [showId], references: [id], onDelete: Cascade)
-  showSeats  ShowSeat[]
-  payment    Payment?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show         Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
+  coupon       Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  showSeats    ShowSeat[]
+  payment      Payment?
+  foodOrders   FoodOrder[]
+  refunds      Refund[]
+  couponUsages CouponUsage[]
 
   @@index([userId])
   @@index([showId])
+  @@index([couponId])
   @@index([status])
 }
 
@@ -208,7 +397,177 @@ model Payment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  booking       Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds Refund[]
 
   @@index([bookingId])
+}
+
+model Refund {
+  id        String       @id @default(cuid())
+  bookingId String
+  paymentId String
+  amount    Decimal      @db.Decimal(10, 2)
+  reason    String
+  status    RefundStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([paymentId])
+}
+
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique
+  discountType     DiscountType
+  discountValue    Decimal      @db.Decimal(10, 2)
+  minBookingAmount Decimal      @default(0.00) @db.Decimal(10, 2)
+  maxDiscount      Decimal      @db.Decimal(10, 2)
+  startsAt         DateTime
+  expiresAt        DateTime
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+
+  usages   CouponUsage[]
+  bookings Booking[]
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  bookingId String
+  usedAt    DateTime @default(now())
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([bookingId])
+}
+
+model Offer {
+  id            String       @id @default(cuid())
+  title         String
+  description   String       @db.Text
+  bannerUrl     String?
+  discountType  DiscountType
+  discountValue Decimal      @db.Decimal(10, 2)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String
+  content   String?  @db.Text
+  rating    Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([movieId])
+}
+
+model Favorite {
+  userId  String
+  movieId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([userId, movieId])
+  @@index([movieId])
+}
+
+model Referral {
+  id            String         @id @default(cuid())
+  referrerId    String
+  referredId    String
+  status        ReferralStatus @default(PENDING)
+  pointsAwarded Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  referrer User @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred User @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([referredId])
+}
+
+model LoyaltyPoints {
+  id        String       @id @default(cuid())
+  userId    String
+  points    Int
+  type      PointsTxType
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model FoodOrder {
+  id        String          @id @default(cuid())
+  bookingId String
+  itemName  String
+  quantity  Int
+  price     Decimal         @db.Decimal(10, 2)
+  status    FoodOrderStatus @default(PREPARING)
+  createdAt DateTime        @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  details   String   @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+}
+
+model Membership {
+  id        String         @id @default(cuid())
+  userId    String
+  type      MembershipType
+  startsAt  DateTime
+  expiresAt DateTime
+  pricePaid Decimal        @db.Decimal(10, 2)
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

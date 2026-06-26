@@ -87,10 +87,12 @@ export default async function MovieDetailsPage({
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Languages className="w-4 h-4" />
-                    {movie.language}
+                    {movie.languages.map((ml) => ml.language.name).join(", ")}
                   </span>
                   <span>•</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-400">{movie.genre}</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-400">
+                    {movie.genres.map((mg) => mg.genre.name).join(", ")}
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { Booking, Payment } from "@prisma/client";
+import { Booking, Payment, City } from "@prisma/client";
 
 export interface IBookingDetails extends Booking {
   show: {
@@ -11,7 +11,7 @@ export interface IBookingDetails extends Booking {
       name: string;
       theatre: {
         name: string;
-        city: string;
+        city: City;
         address: string;
       };
     };

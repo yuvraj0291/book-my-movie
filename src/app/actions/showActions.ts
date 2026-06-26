@@ -1,6 +1,7 @@
 "use server";
 
 import { PrismaShowRepository } from "@/infrastructure/db/PrismaShowRepository";
+import { redis } from "@/lib/redis";
 
 const showRepository = new PrismaShowRepository();
 
@@ -27,17 +28,27 @@ export async function getShowDetailsAction(showId: string) {
 export async function getShowSeatsAction(showId: string) {
   try {
     const seats = await showRepository.findSeatsByShowId(showId);
-    return seats.map(s => ({
-      id: s.id,
-      showId: s.showId,
-      seatId: s.seatId,
-      bookingId: s.bookingId,
-      status: s.status,
-      lockedAt: s.lockedAt,
-      lockedByUserId: s.lockedByUserId,
-      price: Number(s.price),
-      seat: s.seat,
-    }));
+    
+    let lockedSeatIds: string[] = [];
+    try {
+      const lockKeys = await redis.keys(`lock:show:${showId}:seat:*`);
+      lockedSeatIds = lockKeys.map(key => key.split(":").pop() || "");
+    } catch (e) {
+      console.error("Failed to query Redis hold keys:", e);
+    }
+
+    return seats.map(s => {
+      const isLocked = lockedSeatIds.includes(s.seatId);
+      return {
+        id: s.id,
+        showId: s.showId,
+        seatId: s.seatId,
+        bookingId: s.bookingId,
+        status: isLocked ? "LOCKED" : s.status,
+        price: Number(s.price),
+        seat: s.seat,
+      };
+    });
   } catch (e) {
     console.error("getShowSeatsAction failed:", e);
     return [];

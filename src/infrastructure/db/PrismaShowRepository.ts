@@ -1,6 +1,5 @@
 import { IShowDetails, IShowRepository, IShowSeatDetails } from "@/core/repositories/IShowRepository";
 import { db } from "@/lib/db";
-import { ShowSeatStatus } from "@prisma/client";
 
 export class PrismaShowRepository implements IShowRepository {
   async findById(id: string): Promise<IShowDetails | null> {
@@ -10,7 +9,11 @@ export class PrismaShowRepository implements IShowRepository {
         movie: true,
         screen: {
           include: {
-            theatre: true,
+            theatre: {
+              include: {
+                city: true,
+              },
+            },
           },
         },
       },
@@ -47,8 +50,10 @@ export class PrismaShowRepository implements IShowRepository {
         screen: {
           theatre: {
             city: {
-              equals: city,
-              mode: "insensitive",
+              name: {
+                equals: city,
+                mode: "insensitive",
+              },
             },
           },
         },
@@ -84,75 +89,5 @@ export class PrismaShowRepository implements IShowRepository {
     }
 
     return Object.values(theatresMap);
-  }
-
-  async lockSeats(showId: string, seatIds: string[], userId: string, lockTtlSeconds: number): Promise<boolean> {
-    const lockedAt = new Date();
-    
-    try {
-      return await db.$transaction(async (tx) => {
-        const seats = await tx.showSeat.findMany({
-          where: {
-            showId,
-            seatId: { in: seatIds },
-          },
-        });
-
-        if (seats.length !== seatIds.length) {
-          return false;
-        }
-
-        const now = new Date();
-        for (const seat of seats) {
-          const isExpired = seat.status === ShowSeatStatus.LOCKED && 
-            seat.lockedAt && 
-            (now.getTime() - seat.lockedAt.getTime() > lockTtlSeconds * 1000);
-          
-          if (seat.status !== ShowSeatStatus.AVAILABLE && !isExpired) {
-            return false;
-          }
-        }
-
-        await tx.showSeat.updateMany({
-          where: {
-            showId,
-            seatId: { in: seatIds },
-          },
-          data: {
-            status: ShowSeatStatus.LOCKED,
-            lockedAt,
-            lockedByUserId: userId,
-          },
-        });
-
-        return true;
-      });
-    } catch (e) {
-      console.error("PrismaShowRepository.lockSeats failed:", e);
-      return false;
-    }
-  }
-
-  async unlockSeats(showId: string, seatIds: string[], userId: string): Promise<boolean> {
-    try {
-      await db.showSeat.updateMany({
-        where: {
-          showId,
-          seatId: { in: seatIds },
-          lockedByUserId: userId,
-          status: ShowSeatStatus.LOCKED,
-        },
-        data: {
-          status: ShowSeatStatus.AVAILABLE,
-          lockedAt: null,
-          lockedByUserId: null,
-          bookingId: null,
-        },
-      });
-      return true;
-    } catch (e) {
-      console.error("PrismaShowRepository.unlockSeats failed:", e);
-      return false;
-    }
   }
 }

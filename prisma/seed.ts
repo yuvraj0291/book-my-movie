@@ -44,7 +44,7 @@ async function main() {
 
   console.log("Users seeded successfully.");
 
-  // 2. Create Movies
+  // 2. Create Movies with normalized Genres and Languages
   const movie1 = await prisma.movie.create({
     data: {
       title: "Dune: Part Two",
@@ -52,10 +52,19 @@ async function main() {
       posterUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800",
       bannerUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1200",
       durationMins: 166,
-      language: "English",
-      genre: "Sci-Fi, Adventure",
       releaseDate: new Date("2024-03-01"),
       rating: 8.9,
+      genres: {
+        create: [
+          { genre: { connectOrCreate: { where: { name: "Sci-Fi" }, create: { name: "Sci-Fi" } } } },
+          { genre: { connectOrCreate: { where: { name: "Adventure" }, create: { name: "Adventure" } } } }
+        ]
+      },
+      languages: {
+        create: [
+          { language: { connectOrCreate: { where: { name: "English" }, create: { name: "English", code: "en" } } } }
+        ]
+      }
     },
   });
 
@@ -66,10 +75,19 @@ async function main() {
       posterUrl: "https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=800",
       bannerUrl: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200",
       durationMins: 140,
-      language: "English",
-      genre: "Action, Sci-Fi",
       releaseDate: new Date("2023-06-02"),
       rating: 9.1,
+      genres: {
+        create: [
+          { genre: { connectOrCreate: { where: { name: "Action" }, create: { name: "Action" } } } },
+          { genre: { connectOrCreate: { where: { name: "Sci-Fi" }, create: { name: "Sci-Fi" } } } }
+        ]
+      },
+      languages: {
+        create: [
+          { language: { connectOrCreate: { where: { name: "English" }, create: { name: "English", code: "en" } } } }
+        ]
+      }
     },
   });
 
@@ -80,21 +98,47 @@ async function main() {
       posterUrl: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=800",
       bannerUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200",
       durationMins: 180,
-      language: "English",
-      genre: "Drama, Biography",
       releaseDate: new Date("2023-07-21"),
       rating: 8.8,
+      genres: {
+        create: [
+          { genre: { connectOrCreate: { where: { name: "Drama" }, create: { name: "Drama" } } }, },
+          { genre: { connectOrCreate: { where: { name: "Biography" }, create: { name: "Biography" } } } }
+        ]
+      },
+      languages: {
+        create: [
+          { language: { connectOrCreate: { where: { name: "English" }, create: { name: "English", code: "en" } } } }
+        ]
+      }
     },
   });
 
   console.log("Movies seeded successfully.");
 
-  // 3. Create Theatre, Screen, and Seats
+  // 3. Create City, Theatre, Screen, and Seats
+  const cityMumbai = await prisma.city.upsert({
+    where: {
+      name_state_country: {
+        name: "Mumbai",
+        state: "MH",
+        country: "India",
+      }
+    },
+    update: {},
+    create: {
+      name: "Mumbai",
+      state: "MH",
+      country: "India",
+    }
+  });
+
   const theatre = await prisma.theatre.create({
     data: {
       name: "PVR ICON Versova",
-      city: "Mumbai",
+      cityId: cityMumbai.id,
       address: "Laxmi Industrial Estate, Link Rd, Andheri West",
+      ownerId: admin.id,
     },
   });
 
@@ -102,10 +146,12 @@ async function main() {
     data: {
       name: "Audi 1",
       theatreId: theatre.id,
+      rowsCount: 5,
+      colsCount: 8,
+      seatLayout: JSON.stringify({ rows: 5, cols: 8 }),
     },
   });
 
-  // Create standard seat layout grid (Rows A-E, Numbers 1-8 = 40 seats)
   const rows = ["A", "B", "C", "D", "E"];
   const seats = [];
 
@@ -117,6 +163,7 @@ async function main() {
           screenId: screen.id,
           row,
           number: num,
+          label: `${row}-${num}`,
           type,
         },
       });
@@ -129,16 +176,23 @@ async function main() {
   // 4. Create Shows & ShowSeats
   const moviesList = [movie1, movie2, movie3];
   const basePrice = 12.00;
+  
+  // Find language
+  const englishLang = await prisma.language.findUnique({
+    where: { name: "English" },
+  });
+
+  if (!englishLang) {
+    throw new Error("English language record missing.");
+  }
 
   for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
     const showDate = new Date();
     showDate.setDate(showDate.getDate() + dayOffset);
 
-    // Schedule 1 show per movie per day
     for (let index = 0; index < moviesList.length; index++) {
       const movie = moviesList[index];
       
-      // Hour spacing: 14:00, 17:30, 21:00
       const hour = index === 0 ? 14 : index === 1 ? 17 : 21;
       const minute = index === 1 ? 30 : 0;
       
@@ -154,10 +208,10 @@ async function main() {
           startTime,
           endTime,
           basePrice,
+          languageId: englishLang.id,
         },
       });
 
-      // Insert ShowSeat mappings for each seat
       const showSeatsData = seats.map((seat) => {
         let priceMultiplier = 1.0;
         if (seat.type === SeatType.PREMIUM) priceMultiplier = 1.2;

@@ -5,9 +5,10 @@ import { createMovieAction } from "@/app/actions/movieActions";
 import { createTheatreAction, scheduleShowAction } from "@/app/actions/adminActions";
 import { Film, MapPin, Calendar, Plus, Info, CheckCircle2, AlertCircle } from "lucide-react";
 import { Movie } from "@prisma/client";
+import { IMovieWithRelations } from "@/types";
 
 interface AdminDashboardProps {
-  initialMovies: Movie[];
+  initialMovies: IMovieWithRelations[];
   initialTheatres: Array<{
     id: string;
     name: string;
@@ -264,7 +265,9 @@ export function AdminDashboard({ initialMovies, initialTheatres }: AdminDashboar
                 <select name="movieId" required className="w-full bg-zinc-900 border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50">
                   <option value="">Choose a movie...</option>
                   {movies.map((m) => (
-                    <option key={m.id} value={m.id}>{m.title} ({m.language})</option>
+                    <option key={m.id} value={m.id}>
+                      {m.title} ({m.languages.map((l) => l.language.name).join(", ")})
+                    </option>
                   ))}
                 </select>
               </div>

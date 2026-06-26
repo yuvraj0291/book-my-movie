@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { holdSeatsAndCreateBookingAction, confirmBookingPaymentAction } from "@/app/actions/bookingActions";
 import { Film, Calendar, Clock, CreditCard, AlertCircle, CheckCircle, Timer } from "lucide-react";
-import { ShowSeatStatus } from "@prisma/client";
 
 interface SeatSelectionLayoutProps {
   show: {
@@ -18,7 +17,7 @@ interface SeatSelectionLayoutProps {
     id: string;
     seatId: string;
     bookingId: string | null;
-    status: ShowSeatStatus;
+    status: string;
     price: number;
     seat: { row: string; number: number; type: string };
   }>;
@@ -77,8 +76,8 @@ export function SeatSelectionLayout({ show, initialSeats, userEmail }: SeatSelec
     }
   }, [timeLeft, isCheckoutOpen]);
 
-  const handleSeatClick = (seatId: string, status: ShowSeatStatus) => {
-    if (status !== ShowSeatStatus.AVAILABLE) return;
+  const handleSeatClick = (seatId: string, status: string) => {
+    if (status !== "AVAILABLE") return;
     
     setSelectedSeats((prev) =>
       prev.includes(seatId)
@@ -168,8 +167,8 @@ export function SeatSelectionLayout({ show, initialSeats, userEmail }: SeatSelec
                 <div className="flex gap-2">
                   {groupedSeats[rowName].map((seat) => {
                     const isSelected = selectedSeats.includes(seat.seatId);
-                    const isBooked = seat.status === ShowSeatStatus.BOOKED;
-                    const isLocked = seat.status === ShowSeatStatus.LOCKED;
+                    const isBooked = seat.status === "BOOKED";
+                    const isLocked = seat.status === "LOCKED";
                     
                     let bgClass = "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-white/5 cursor-pointer";
                     if (isBooked) bgClass = "bg-zinc-900/50 text-zinc-700 border border-transparent cursor-not-allowed";

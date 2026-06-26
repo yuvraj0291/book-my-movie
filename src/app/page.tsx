@@ -17,7 +17,7 @@ export default async function HomePage({
     const matchesSearch =
       !search ||
       movie.title.toLowerCase().includes(search.toLowerCase()) ||
-      movie.genre.toLowerCase().includes(search.toLowerCase());
+      movie.genres.some((mg) => mg.genre.name.toLowerCase().includes(search.toLowerCase()));
     return matchesSearch;
   });
 
@@ -64,7 +64,7 @@ export default async function HomePage({
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Languages className="w-4 h-4" />
-                    {featuredMovie.language}
+                    {featuredMovie.languages.map((ml) => ml.language.name).join(", ")}
                   </span>
                 </div>
 
@@ -144,9 +144,9 @@ export default async function HomePage({
                       {movie.title}
                     </h3>
                     <div className="flex items-center justify-between text-xs text-zinc-500 font-light">
-                      <span>{movie.genre}</span>
+                      <span className="truncate max-w-[100px]">{movie.genres.map((mg) => mg.genre.name).join(", ")}</span>
                       <span>•</span>
-                      <span>{movie.language}</span>
+                      <span className="truncate max-w-[70px]">{movie.languages.map((ml) => ml.language.name).join(", ")}</span>
                     </div>
                   </div>
                 </Link>

@@ -36,11 +36,27 @@ export default async function BookingPage({
     );
   }
 
+  const formattedShow = {
+    id: show.id,
+    startTime: show.startTime,
+    movie: {
+      title: show.movie.title,
+      posterUrl: show.movie.posterUrl,
+    },
+    screen: {
+      name: show.screen.name,
+      theatre: {
+        name: show.screen.theatre.name,
+        city: show.screen.theatre.city.name,
+      },
+    },
+  };
+
   return (
     <>
       <Header />
       <main className="flex-1 w-full bg-[#030712] py-8">
-        <SeatSelectionLayout show={show} initialSeats={seats} userEmail={session.user.email!} />
+        <SeatSelectionLayout show={formattedShow} initialSeats={seats} userEmail={session.user.email!} />
       </main>
       <Footer />
     </>

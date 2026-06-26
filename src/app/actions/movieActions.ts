@@ -4,10 +4,11 @@ import { db } from "@/lib/db";
 import { PrismaMovieRepository } from "@/infrastructure/db/PrismaMovieRepository";
 import { Movie } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { IMovieWithRelations } from "@/types";
 
 const movieRepository = new PrismaMovieRepository();
 
-export async function getMoviesAction(): Promise<Movie[]> {
+export async function getMoviesAction(): Promise<IMovieWithRelations[]> {
   try {
     return await movieRepository.findAllActive();
   } catch (e) {
@@ -16,7 +17,7 @@ export async function getMoviesAction(): Promise<Movie[]> {
   }
 }
 
-export async function getMovieByIdAction(id: string): Promise<Movie | null> {
+export async function getMovieByIdAction(id: string): Promise<IMovieWithRelations | null> {
   try {
     return await movieRepository.findById(id);
   } catch (e) {
@@ -37,9 +38,23 @@ export async function createMovieAction(data: {
   rating: number;
 }) {
   try {
-    const movie = await movieRepository.create(data);
+    const genres = data.genre.split(",").map((g) => g.trim()).filter(Boolean);
+    const languages = data.language.split(",").map((l) => l.trim()).filter(Boolean);
+
+    const movie = await movieRepository.create({
+      title: data.title,
+      description: data.description,
+      posterUrl: data.posterUrl,
+      bannerUrl: data.bannerUrl,
+      durationMins: data.durationMins,
+      genres,
+      languages,
+      releaseDate: data.releaseDate,
+      rating: data.rating,
+    });
+    const movieWithRelations = await movieRepository.findById(movie.id);
     revalidatePath("/");
-    return { success: true, movie };
+    return { success: true, movie: movieWithRelations };
   } catch (e) {
     console.error("createMovieAction failed:", e);
     return { error: "Failed to create movie" };
