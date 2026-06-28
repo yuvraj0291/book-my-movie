@@ -135,7 +135,7 @@ export class PrismaBookingRepository implements IBookingRepository {
 
         await tx.payment.updateMany({
           where: { bookingId },
-          data: { status: PaymentStatus.FAILED },
+          data: { status: PaymentStatus.REFUNDED },
         });
 
         return true;
