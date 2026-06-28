@@ -64,3 +64,23 @@ export async function getShowsByMovieAndCityAction(movieId: string, city: string
     return [];
   }
 }
+
+import { db } from "@/lib/db";
+
+export async function getTheatresInCityAction(city: string) {
+  try {
+    return await db.theatre.findMany({
+      where: {
+        city: { name: { equals: city, mode: "insensitive" } },
+      },
+      orderBy: { name: "asc" },
+      include: {
+        screens: true,
+      },
+    });
+  } catch (e) {
+    console.error("getTheatresInCityAction failed:", e);
+    return [];
+  }
+}
+

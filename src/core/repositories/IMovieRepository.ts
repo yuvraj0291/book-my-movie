@@ -1,9 +1,12 @@
 import { Movie } from "@prisma/client";
-import { IMovieWithRelations } from "@/types";
+import { IMovieWithRelations, IMovieDetails, MovieDiscoveryFilters } from "@/types";
 
 export interface IMovieRepository {
   findById(id: string): Promise<IMovieWithRelations | null>;
+  findDetailsById(id: string): Promise<IMovieDetails | null>;
   findAllActive(): Promise<IMovieWithRelations[]>;
+  findDiscoveryMovies(filters: MovieDiscoveryFilters): Promise<{ movies: IMovieWithRelations[]; total: number }>;
+  findRecommendations(movieId: string): Promise<IMovieWithRelations[]>;
   create(data: {
     title: string;
     description: string;
@@ -16,3 +19,4 @@ export interface IMovieRepository {
     rating: number;
   }): Promise<Movie>;
 }
+
