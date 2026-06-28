@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Film, MapPin, Search, User, LogOut, Ticket, Settings, Sun, Moon, X } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { useTheme } from "./ThemeProvider";
 import { getMovieSuggestionsAction, getCitiesAction } from "@/app/actions/movieActions";
 

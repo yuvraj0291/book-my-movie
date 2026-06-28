@@ -27,7 +27,7 @@ import {
   Heart,
 } from "lucide-react";
 import Link from "next/link";
-import { SeatType } from "@prisma/client";
+import { SeatType } from "@/types";
 
 interface SeatSelectionLayoutProps {
   show: {

@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X, Filter, ChevronDown, Check } from "lucide-react";
-import { ShowFormat } from "@prisma/client";
+import { ShowFormat } from "@/types";
 
 interface MovieFiltersProps {
   genres: string[];
@@ -56,7 +56,7 @@ export function MovieFilters({ genres, languages, theatres, city }: MovieFilters
     router.push(`/movies?${params.toString()}`);
   };
 
-  const formats: ShowFormat[] = ["TWO_D", "THREE_D", "IMAX", "FOUR_DX"];
+  const formats: ShowFormat[] = [ShowFormat.TWO_D, ShowFormat.THREE_D, ShowFormat.IMAX, ShowFormat.FOUR_DX];
 
   return (
     <div className="w-full lg:w-64 shrink-0 space-y-6 bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-850 shadow-sm">

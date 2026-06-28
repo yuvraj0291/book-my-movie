@@ -5,7 +5,7 @@ import { getDiscoveryMoviesAction, getFilterOptionsAction } from "@/app/actions/
 import { MovieFilters } from "@/components/domains/MovieFilters";
 import Link from "next/link";
 import { Star, Clock, Languages, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { ShowFormat } from "@prisma/client";
+import { ShowFormat } from "@/types";
 
 export const dynamic = "force-dynamic";
 

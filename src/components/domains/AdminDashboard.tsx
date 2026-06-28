@@ -36,8 +36,7 @@ import {
   Mail,
   Navigation,
 } from "lucide-react";
-import { Role, ShowFormat, SeatType } from "@prisma/client";
-import { IMovieWithRelations } from "@/types";
+import { Role, ShowFormat, SeatType, IMovieWithRelations } from "@/types";
 
 interface AdminDashboardProps {
   initialMovies: IMovieWithRelations[];
@@ -73,7 +72,7 @@ export function AdminDashboard({
   const [designerRows, setDesignerRows] = useState(8);
   const [designerCols, setDesignerCols] = useState(10);
   const [designerGrid, setDesignerGrid] = useState<any[][]>([]);
-  const [selectedSeatType, setSelectedSeatType] = useState<SeatType>("NORMAL");
+  const [selectedSeatType, setSelectedSeatType] = useState<SeatType>(SeatType.NORMAL);
   const [designerMode, setDesignerMode] = useState<"toggle-active" | "paint-type">("toggle-active");
   const [designerStatus, setDesignerStatus] = useState<{ error?: string; success?: string }>({});
 

@@ -7,7 +7,7 @@ import { getOwnerTheatresAction, getPendingTheatresAction } from "@/app/actions/
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 
 export const dynamic = "force-dynamic";
 
