@@ -266,15 +266,18 @@ model MovieDirector {
 }
 
 model Theatre {
-  id        String   @id @default(cuid())
-  name      String
-  cityId    String
-  address   String
-  latitude  Float?
-  longitude Float?
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  cityId       String
+  address      String
+  latitude     Float?
+  longitude    Float?
+  contactPhone String?
+  contactEmail String?
+  approved     Boolean  @default(false)
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   city    City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
   owner   User     @relation("OwnedTheatres", fields: [ownerId], references: [id], onDelete: Restrict)
@@ -283,6 +286,7 @@ model Theatre {
   @@index([cityId])
   @@index([ownerId])
 }
+
 
 model Screen {
   id         String   @id @default(cuid())
