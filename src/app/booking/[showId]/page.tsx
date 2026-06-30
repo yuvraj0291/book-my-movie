@@ -25,7 +25,7 @@ export default async function BookingPage({
     return (
       <>
         <Header />
-        <main className="flex-1 flex items-center justify-center py-20 bg-[#030712]">
+        <main className="flex-1 flex items-center justify-center py-20 bg-zinc-50 dark:bg-[#030712] text-zinc-900 dark:text-white transition-colors duration-200">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white">Show not found</h2>
             <Link href="/" className="text-primary hover:underline mt-2 inline-block">Back to home</Link>
@@ -55,7 +55,7 @@ export default async function BookingPage({
   return (
     <>
       <Header />
-      <main className="flex-1 w-full bg-[#030712] py-8">
+      <main className="flex-1 w-full bg-zinc-50 dark:bg-[#030712] text-zinc-900 dark:text-white transition-colors duration-200 py-8">
         <SeatSelectionLayout show={formattedShow} initialSeats={seats} userEmail={session.user.email!} />
       </main>
       <Footer />

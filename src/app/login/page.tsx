@@ -5,7 +5,7 @@ import { Film } from "lucide-react";
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden bg-[#030712]">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden bg-zinc-50 dark:bg-[#030712] text-zinc-900 dark:text-white transition-colors duration-200">
       {/* Cinematic background overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(244,63,94,0.05),transparent_70%)] pointer-events-none" />
       
@@ -14,7 +14,7 @@ export default function LoginPage() {
           <div className="bg-primary p-2.5 rounded-xl text-white shadow-lg shadow-primary/20">
             <Film className="w-6 h-6" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white">
+          <span className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Movie<span className="text-primary">Rocks</span>
           </span>
         </Link>
