@@ -95,10 +95,10 @@ export async function signUpAction(formData: FormData) {
     });
 
     // Send verification email
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
     const verifyUrl = `${baseUrl}/api/auth/verify?token=${token}`;
     
-    await emailService.send({
+    const emailSent = await emailService.send({
       to: email,
       subject: "Verify Your Email - MovieRocks 🍿",
       html: `
@@ -113,6 +113,16 @@ export async function signUpAction(formData: FormData) {
         </div>
       `,
     });
+
+    if (!emailSent) {
+      // Rollback user and token creation to allow immediate retry
+      await db.verificationToken.deleteMany({ where: { email } });
+      await db.user.delete({ where: { id: user.id } });
+      
+      return { 
+        error: "Failed to send verification email. If you are using a Resend sandbox API key, please register using the exact email address associated with your Resend account, or verify a custom domain and configure RESEND_FROM_EMAIL." 
+      };
+    }
 
     // Write audit log
     await db.auditLog.create({

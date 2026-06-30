@@ -16,6 +16,8 @@ export class ResendEmailService implements IEmailService {
         html,
       });
 
+      console.log(`Resend API Response: ${JSON.stringify(response)}`);
+
       if (response.error) {
         console.error("Resend send email error:", response.error);
         
